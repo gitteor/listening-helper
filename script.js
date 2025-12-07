@@ -173,7 +173,7 @@ function renderChunkList() {
 
     const playButton = document.createElement("button");
     playButton.className = "secondary";
-    playButton.textContent = "이 구간 재생";
+    playButton.textContent = "재생";
     playButton.addEventListener("click", () => {
       handlePlaySingleChunk(idx);
     });

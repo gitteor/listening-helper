@@ -1,35 +1,20 @@
 // ===== 전역 상태 =====
 let chunks = []; // { index, start, duration, repeat }
 
-// ===== DOM 요소 (네 HTML id 그대로) =====
+// ===== DOM 요소 (질문에서 주신 HTML id 기준) =====
 const fileInput          = document.getElementById("audioFile");
 const chunkSecondsInput  = document.getElementById("chunkSeconds");
 const defaultRepeatInput = document.getElementById("defaultRepeat");
 const cutButton          = document.getElementById("cutButton");
 const chunkListEl        = document.getElementById("chunkList");
 
-const globalRepeatInput  = document.getElementById("globalRepeat");
+const globalRepeatInput  = document.getElementById("globalRepeat");   // 지금은 안 씀(나중 확장)
 const playbackRateSelect = document.getElementById("playbackRate");
-const playAllButton      = document.getElementById("playAllButton");
-const pauseButton        = document.getElementById("pauseButton");
-const stopButton         = document.getElementById("stopButton");
+const playAllButton      = document.getElementById("playAllButton");  // 지금은 안 씀(나중 확장)
+const pauseButton        = document.getElementById("pauseButton");    // 지금은 안 씀(나중 확장)
+const stopButton         = document.getElementById("stopButton");     // 지금은 안 씀(나중 확장)
 
 const audioElement       = document.getElementById("audioPlayer");
-
-// 디버깅용: 필수 DOM이 제대로 잡혔는지 확인
-console.log("DOM refs:", {
-  fileInput,
-  chunkSecondsInput,
-  defaultRepeatInput,
-  cutButton,
-  chunkListEl,
-  globalRepeatInput,
-  playbackRateSelect,
-  playAllButton,
-  pauseButton,
-  stopButton,
-  audioElement
-});
 
 // ===== 유틸 =====
 function formatTime(sec) {
@@ -41,9 +26,9 @@ function getPlaybackRate() {
   return Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
-// ===== 자르기 로직 (핵심) =====
+// ===== 1. 자르기 버튼 동작 =====
 cutButton.addEventListener("click", () => {
-  console.log("자르기 버튼 클릭됨");  // 이 로그가 안 보이면 JS 자체가 안 도는 것.
+  console.log("[DEBUG] 자르기 버튼 클릭");
 
   const file = fileInput.files[0];
   if (!file) {
@@ -68,7 +53,7 @@ cutButton.addEventListener("click", () => {
 
   audioElement.onloadedmetadata = () => {
     const duration = audioElement.duration;
-    console.log("오디오 길이:", duration);
+    console.log("[DEBUG] 오디오 길이(초):", duration);
 
     if (!Number.isFinite(duration) || duration <= 0) {
       alert("오디오 길이를 읽을 수 없습니다.");
@@ -77,15 +62,18 @@ cutButton.addEventListener("click", () => {
 
     chunks = [];
     let index = 1;
+
     for (let start = 0; start < duration; start += sec) {
       const end = Math.min(start + sec, duration);
       const length = end - start;
+
       chunks.push({
-        index,
-        start,
+        index: index,
+        start: start,
         duration: length,
-        repeat: defaultRepeat,
+        repeat: defaultRepeat
       });
+
       index++;
     }
 
@@ -93,7 +81,7 @@ cutButton.addEventListener("click", () => {
   };
 });
 
-// ===== 구간 목록 렌더링 =====
+// ===== 2. 잘린 구간 목록 렌더링 =====
 function renderChunkList() {
   chunkListEl.innerHTML = "";
 
@@ -105,20 +93,23 @@ function renderChunkList() {
     return;
   }
 
-  chunks.forEach((chunk, idx) => {
+  chunks.forEach((chunk) => {
     const row = document.createElement("div");
     row.className = "chunk-row";
 
+    // 구간 번호
     const labelSpan = document.createElement("span");
     labelSpan.className = "chunk-label";
     labelSpan.textContent = `구간 ${chunk.index}`;
 
+    // 시간 정보
     const timeSpan = document.createElement("span");
     timeSpan.className = "chunk-time";
     const startText = formatTime(chunk.start);
-    const endText = formatTime(chunk.start + chunk.duration);
+    const endText   = formatTime(chunk.start + chunk.duration);
     timeSpan.textContent = `(${startText} ~ ${endText})`;
 
+    // 반복 입력
     const repeatWrapper = document.createElement("span");
     repeatWrapper.className = "repeat-field";
 
@@ -128,11 +119,11 @@ function renderChunkList() {
     const repeatInput = document.createElement("input");
     repeatInput.type = "number";
     repeatInput.min = "1";
-    repeatInput.value = chunk.repeat.toString();
+    repeatInput.value = String(chunk.repeat);
     repeatInput.addEventListener("change", () => {
       const v = parseInt(repeatInput.value, 10);
       chunk.repeat = Number.isFinite(v) && v > 0 ? v : 1;
-      repeatInput.value = chunk.repeat.toString();
+      repeatInput.value = String(chunk.repeat);
     });
 
     const repeatSuffix = document.createElement("span");
@@ -142,6 +133,7 @@ function renderChunkList() {
     repeatWrapper.appendChild(repeatInput);
     repeatWrapper.appendChild(repeatSuffix);
 
+    // 이 구간 재생 버튼
     const playButton = document.createElement("button");
     playButton.className = "secondary";
     playButton.textContent = "이 구간 재생";
@@ -158,21 +150,24 @@ function renderChunkList() {
   });
 }
 
-// ===== 단일 구간 재생 (초기 버전 느낌으로 단순하게) =====
+// ===== 3. 단일 구간 재생 (반복 횟수 포함, 단순 버전) =====
 function playSection(start, end, repeatCount) {
   let count = 0;
   const rate = getPlaybackRate();
-  audioElement.playbackRate = rate;
 
   function playOnce() {
-    count++;
+    count += 1;
     audioElement.currentTime = start;
-    audioElement.play();
+    audioElement.playbackRate = rate;
+    audioElement.play().catch((e) => {
+      console.error("[DEBUG] 재생 에러:", e);
+    });
 
     const handler = () => {
-      if (audioElement.currentTime >= end || audioElement.ended) {
+      if (audioElement.currentTime >= end) {
         audioElement.pause();
         audioElement.removeEventListener("timeupdate", handler);
+
         if (count < repeatCount) {
           playOnce();
         }
@@ -184,90 +179,3 @@ function playSection(start, end, repeatCount) {
 
   playOnce();
 }
-
-// ===== 전체 재생 (간단 버전) =====
-let isPlayingAll = false;
-
-playAllButton.addEventListener("click", () => {
-  if (isPlayingAll) return;
-  if (chunks.length === 0) {
-    alert("먼저 자르기를 실행해 주세요.");
-    return;
-  }
-
-  let globalRepeat = parseInt(globalRepeatInput.value, 10);
-  if (!Number.isFinite(globalRepeat) || globalRepeat < 1) {
-    globalRepeat = 1;
-    globalRepeatInput.value = "1";
-  }
-
-  const rate = getPlaybackRate();
-  audioElement.playbackRate = rate;
-
-  // 재생 계획 만들기
-  const plan = [];
-  for (let g = 0; g < globalRepeat; g++) {
-    chunks.forEach((chunk) => {
-      const r = chunk.repeat || 1;
-      for (let i = 0; i < r; i++) {
-        plan.push({
-          start: chunk.start,
-          end: chunk.start + chunk.duration,
-        });
-      }
-    });
-  }
-
-  if (plan.length === 0) return;
-
-  isPlayingAll = true;
-  playAllButton.disabled = true;
-
-  let idx = 0;
-
-  function playNext() {
-    if (idx >= plan.length) {
-      isPlayingAll = false;
-      playAllButton.disabled = false;
-      return;
-    }
-
-    const seg = plan[idx];
-    idx++;
-
-    audioElement.currentTime = seg.start;
-    audioElement.play();
-
-    const handler = () => {
-      if (audioElement.currentTime >= seg.end || audioElement.ended) {
-        audioElement.pause();
-        audioElement.removeEventListener("timeupdate", handler);
-        playNext();
-      }
-    };
-
-    audioElement.addEventListener("timeupdate", handler);
-  }
-
-  playNext();
-});
-
-// 일시정지 / 다시 재생 (전체/단일 공통)
-pauseButton.addEventListener("click", () => {
-  if (audioElement.paused) {
-    audioElement.play().catch(console.error);
-    pauseButton.textContent = "일시정지";
-  } else {
-    audioElement.pause();
-    pauseButton.textContent = "다시 재생";
-  }
-});
-
-// 정지
-stopButton.addEventListener("click", () => {
-  audioElement.pause();
-  audioElement.currentTime = 0;
-  isPlayingAll = false;
-  playAllButton.disabled = false;
-  pauseButton.textContent = "일시정지";
-});

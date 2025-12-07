@@ -1,12 +1,13 @@
-// 전역 상태
-let audioCtx = null;
-let audioBuffer = null;
+// ===== 전역 상태 =====
 let chunks = []; // { index, start, duration, repeat }
-let currentSource = null;
 let isPlayingAll = false;
-let playQueue = [];
+let isPaused = false;
+let playMode = "none"; // "none" | "single" | "all"
+let currentSequence = []; // 전체 재생용 시퀀스
+let currentSeqIndex = 0;
+let lastObjectUrl = null;
 
-// DOM 요소 캐시
+// ===== DOM 요소 =====
 const fileInput = document.getElementById("audioFile");
 const chunkSecondsInput = document.getElementById("chunkSeconds");
 const cutButton = document.getElementById("cutButton");
@@ -14,9 +15,34 @@ const chunkListEl = document.getElementById("chunkList");
 const globalRepeatInput = document.getElementById("globalRepeat");
 const playbackRateSelect = document.getElementById("playbackRate");
 const playAllButton = document.getElementById("playAllButton");
+const pauseButton = document.getElementById("pauseButton");
 const stopButton = document.getElementById("stopButton");
 
-// ============ 유틸 함수들 ============
+const repeatAllMinusBtn = document.getElementById("repeatAllMinus");
+const repeatAllPlusBtn = document.getElementById("repeatAllPlus");
+const repeatAllResetBtn = document.getElementById("repeatAllReset");
+
+const audioElement = document.getElementById("audioPlayer");
+
+// timeupdate 핸들러 관리
+let timeUpdateHandler = null;
+
+function setTimeUpdateHandler(handler) {
+  if (!audioElement) return;
+  if (timeUpdateHandler) {
+    audioElement.removeEventListener("timeupdate", timeUpdateHandler);
+  }
+  timeUpdateHandler = handler;
+  if (handler) {
+    audioElement.addEventListener("timeupdate", handler);
+  }
+}
+
+function clearTimeUpdateHandler() {
+  setTimeUpdateHandler(null);
+}
+
+// ===== 유틸 함수 =====
 
 function formatTime(sec) {
   return sec.toFixed(1) + "s";
@@ -29,18 +55,24 @@ function getPlaybackRate() {
 
 function stopAllPlayback() {
   isPlayingAll = false;
-  playQueue = [];
-  if (currentSource) {
-    try {
-      currentSource.stop();
-    } catch (e) {
-      // 이미 종료된 경우 에러 무시
-    }
-    currentSource = null;
+  isPaused = false;
+  playMode = "none";
+  currentSequence = [];
+  currentSeqIndex = 0;
+
+  if (audioElement) {
+    audioElement.pause();
+    // 원하는 경우 처음으로 돌리려면 아래 주석 해제
+    // audioElement.currentTime = 0;
+  }
+  clearTimeUpdateHandler();
+
+  if (pauseButton) {
+    pauseButton.textContent = "일시정지";
   }
 }
 
-// ============ 파일 자르기 ============
+// ===== 파일 자르기 =====
 
 async function handleCut() {
   const file = fileInput.files[0];
@@ -55,38 +87,44 @@ async function handleCut() {
     return;
   }
 
-  // 오디오 컨텍스트 생성
-  if (!audioCtx || audioCtx.state === "closed") {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // 이전 파일 URL 해제
+  if (lastObjectUrl) {
+    URL.revokeObjectURL(lastObjectUrl);
+    lastObjectUrl = null;
   }
 
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  } catch (e) {
-    console.error(e);
-    alert("오디오 파일을 읽는 중 오류가 발생했습니다.");
-    return;
-  }
+  const objectUrl = URL.createObjectURL(file);
+  lastObjectUrl = objectUrl;
+  audioElement.src = objectUrl;
 
-  const duration = audioBuffer.duration;
-  chunks = [];
+  // 메타데이터 로딩 후 duration 사용
+  audioElement.onloadedmetadata = () => {
+    const duration = audioElement.duration;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      alert("오디오 길이를 읽을 수 없습니다.");
+      return;
+    }
 
-  let index = 1;
-  for (let start = 0; start < duration; start += sec) {
-    const end = Math.min(start + sec, duration);
-    const length = end - start;
-    chunks.push({
-      index,
-      start,
-      duration: length,
-      repeat: 1, // 기본 반복 1회
-    });
-    index++;
-  }
+    chunks = [];
+    let index = 1;
+    for (let start = 0; start < duration; start += sec) {
+      const end = Math.min(start + sec, duration);
+      const length = end - start;
+      chunks.push({
+        index,
+        start,
+        duration: length,
+        repeat: 1, // 기본 1회
+      });
+      index++;
+    }
 
-  renderChunkList();
+    stopAllPlayback();
+    renderChunkList();
+  };
 }
+
+// ===== 잘린 구간 목록 표시 =====
 
 function renderChunkList() {
   chunkListEl.innerHTML = "";
@@ -153,57 +191,62 @@ function renderChunkList() {
   });
 }
 
-// ============ 단일 구간 재생 ============
+// ===== 단일 구간 재생 =====
 
-async function handlePlaySingleChunk(idx) {
-  if (!audioBuffer || !audioCtx) {
+function handlePlaySingleChunk(idx) {
+  if (!audioElement || !chunks[idx]) {
     alert("먼저 파일을 자른 후에 재생할 수 있습니다.");
     return;
   }
-  if (!chunks[idx]) return;
 
-  stopAllPlayback(); // 다른 재생 중이면 중단
   const chunk = chunks[idx];
-
-  // 브라우저 정책 때문에 필요할 수 있음
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-  }
-
   const rate = getPlaybackRate();
-  let remaining = chunk.repeat;
+  audioElement.playbackRate = rate;
 
-  const playOnce = () => {
-    if (remaining <= 0) {
-      currentSource = null;
+  stopAllPlayback(); // 다른 모드 정리
+  playMode = "single";
+  let remaining = chunk.repeat || 1;
+  isPaused = false;
+  pauseButton.textContent = "일시정지";
+
+  const playOne = () => {
+    if (remaining <= 0 || playMode !== "single") {
+      stopAllPlayback();
       return;
     }
 
-    const source = audioCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioCtx.destination);
-    source.playbackRate.value = rate;
+    audioElement.currentTime = chunk.start;
+    audioElement
+      .play()
+      .then(() => {
+        setTimeUpdateHandler(() => {
+          if (audioElement.currentTime >= chunk.start + chunk.duration) {
+            audioElement.pause();
+            if (isPaused || playMode !== "single") return;
 
-    source.onended = () => {
-      remaining--;
-      if (remaining > 0) {
-        playOnce();
-      } else {
-        currentSource = null;
-      }
-    };
-
-    currentSource = source;
-    source.start(0, chunk.start, chunk.duration);
+            remaining--;
+            if (remaining > 0) {
+              setTimeout(playOne, 50);
+            } else {
+              stopAllPlayback();
+            }
+          }
+        });
+      })
+      .catch((e) => {
+        console.error(e);
+        alert("재생 중 오류가 발생했습니다.");
+        stopAllPlayback();
+      });
   };
 
-  playOnce();
+  playOne();
 }
 
-// ============ 전체 재생 ============
+// ===== 전체 재생 =====
 
-function buildPlayQueue() {
-  playQueue = [];
+function buildSequence() {
+  const sequence = [];
   const globalRepeat = parseInt(globalRepeatInput.value, 10);
   const totalSetRepeat =
     Number.isFinite(globalRepeat) && globalRepeat > 0 ? globalRepeat : 1;
@@ -212,63 +255,122 @@ function buildPlayQueue() {
     chunks.forEach((chunk) => {
       const r = chunk.repeat || 1;
       for (let i = 0; i < r; i++) {
-        playQueue.push({
+        sequence.push({
           start: chunk.start,
-          duration: chunk.duration,
+          end: chunk.start + chunk.duration,
         });
       }
     });
   }
+  return sequence;
 }
 
-async function handlePlayAll() {
-  if (!audioBuffer || !audioCtx || chunks.length === 0) {
+function handlePlayAll() {
+  if (!audioElement || chunks.length === 0) {
     alert("먼저 파일을 자르고 난 후에 전체 재생이 가능합니다.");
     return;
   }
 
-  stopAllPlayback();
-  buildPlayQueue();
-  if (playQueue.length === 0) return;
-
-  if (audioCtx.state === "suspended") {
-    await audioCtx.resume();
-  }
-
-  isPlayingAll = true;
-  playNextInQueue();
-}
-
-function playNextInQueue() {
-  if (!isPlayingAll) return;
-  if (playQueue.length === 0) {
-    isPlayingAll = false;
-    currentSource = null;
-    return;
-  }
-
-  const seg = playQueue.shift();
   const rate = getPlaybackRate();
+  audioElement.playbackRate = rate;
 
-  const source = audioCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(audioCtx.destination);
-  source.playbackRate.value = rate;
+  stopAllPlayback(); // 초기화
+  currentSequence = buildSequence();
+  if (currentSequence.length === 0) return;
 
-  source.onended = () => {
-    currentSource = null;
-    if (!isPlayingAll) return;
-    playNextInQueue();
+  playMode = "all";
+  isPlayingAll = true;
+  isPaused = false;
+  pauseButton.textContent = "일시정지";
+  currentSeqIndex = 0;
+
+  const playNext = () => {
+    if (
+      !isPlayingAll ||
+      playMode !== "all" ||
+      currentSeqIndex >= currentSequence.length
+    ) {
+      stopAllPlayback();
+      return;
+    }
+
+    const seg = currentSequence[currentSeqIndex];
+    audioElement.currentTime = seg.start;
+
+    audioElement
+      .play()
+      .then(() => {
+        setTimeUpdateHandler(() => {
+          if (audioElement.currentTime >= seg.end) {
+            audioElement.pause();
+            if (isPaused || playMode !== "all") return;
+
+            currentSeqIndex++;
+            setTimeout(playNext, 50);
+          }
+        });
+      })
+      .catch((e) => {
+        console.error(e);
+        alert("재생 중 오류가 발생했습니다.");
+        stopAllPlayback();
+      });
   };
 
-  currentSource = source;
-  source.start(0, seg.start, seg.duration);
+  playNext();
 }
 
-// ============ 이벤트 바인딩 ============
+// ===== 전체 반복 일괄 조정 =====
+
+function adjustAllRepeats(delta) {
+  if (chunks.length === 0) return;
+  chunks.forEach((chunk) => {
+    const next = (chunk.repeat || 1) + delta;
+    chunk.repeat = next > 1 ? next : 1;
+  });
+  renderChunkList();
+}
+
+// ===== 이벤트 바인딩 =====
 
 cutButton.addEventListener("click", handleCut);
 playAllButton.addEventListener("click", handlePlayAll);
 stopButton.addEventListener("click", () => {
   stopAllPlayback();
+});
+
+// 일시정지 / 다시 재생
+pauseButton.addEventListener("click", () => {
+  if (!audioElement || playMode === "none") return;
+
+  if (!isPaused) {
+    // 일시정지
+    audioElement.pause();
+    isPaused = true;
+    pauseButton.textContent = "다시 재생";
+  } else {
+    // 다시 재생
+    audioElement
+      .play()
+      .then(() => {
+        isPaused = false;
+        pauseButton.textContent = "일시정지";
+      })
+      .catch((e) => {
+        console.error(e);
+      });
+  }
+});
+
+// 전체 반복 조절 버튼
+repeatAllMinusBtn.addEventListener("click", () => {
+  adjustAllRepeats(-1);
+});
+repeatAllPlusBtn.addEventListener("click", () => {
+  adjustAllRepeats(1);
+});
+repeatAllResetBtn.addEventListener("click", () => {
+  if (chunks.length === 0) return;
+  chunks.forEach((chunk) => (chunk.repeat = 1));
+  renderChunkList();
 });

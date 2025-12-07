@@ -201,6 +201,11 @@ input[type="file"] {
   overflow-x: hidden;
 }
 
+.header {
+  background-color: #000;
+  color: #fff;     /* 헤더 안의 글씨도 흰색으로 설정 (가독성 향상) */
+}
+
 /* ---- 모바일에서만 파일 input 확장 & 가로정렬 적용 ---- */
 @media (max-width: 600px) {
   .form-row {

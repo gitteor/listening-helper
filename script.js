@@ -28,6 +28,23 @@ function getPlaybackRate() {
   return Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
+// 현재 재생 구간 하이라이트 초기화
+function clearActiveChunkHighlight() {
+  const activeRows = chunkListEl.querySelectorAll(".chunk-row.active");
+  activeRows.forEach((row) => row.classList.remove("active"));
+}
+
+// 지정 인덱스 구간 하이라이트
+function setActiveChunkHighlight(chunkIndex) {
+  clearActiveChunkHighlight();
+  const row = chunkListEl.querySelector(
+    `.chunk-row[data-chunk-index="${chunkIndex}"]`
+  );
+  if (row) {
+    row.classList.add("active");
+  }
+}
+
 // ===== 1. 자르기 버튼 동작 =====
 cutButton.addEventListener("click", () => {
   console.log("[DEBUG] 자르기 버튼 클릭");
@@ -79,6 +96,8 @@ cutButton.addEventListener("click", () => {
       index++;
     }
 
+    clearActiveChunkHighlight();
+    isPlayingAll = false;
     renderChunkList();
   };
 });
@@ -95,13 +114,16 @@ function renderChunkList() {
     return;
   }
 
-  chunks.forEach((chunk) => {
+  chunks.forEach((chunk, idx) => {
     const row = document.createElement("div");
     row.className = "chunk-row";
+    // 하이라이트를 위해 인덱스를 data-속성으로 저장
+    row.dataset.chunkIndex = String(idx);
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "chunk-label";
-    labelSpan.textContent = `구간 ${chunk.index}`; // 여기 텍스트는 자유롭게 수정 가능
+    // 이 텍스트는 마음대로 바꾸셔도 됩니다.
+    labelSpan.textContent = `구간 ${chunk.index}`;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "chunk-time";
@@ -134,9 +156,14 @@ function renderChunkList() {
 
     const playButton = document.createElement("button");
     playButton.className = "secondary";
-    playButton.textContent = "▶"; // 여기도 원하시는 텍스트/아이콘으로 변경 가능
+    // 여기 텍스트도 자유롭게 바꾸셔도 됩니다.
+    playButton.textContent = "▶";
     playButton.addEventListener("click", () => {
-      playSection(chunk.start, chunk.start + chunk.duration, chunk.repeat);
+      clearActiveChunkHighlight();
+      setActiveChunkHighlight(idx); // 개별 재생 시에도 표시 (원치 않으면 이 줄 삭제)
+      playSection(chunk.start, chunk.start + chunk.duration, chunk.repeat, () => {
+        clearActiveChunkHighlight();
+      });
     });
 
     row.appendChild(labelSpan);
@@ -208,14 +235,15 @@ playAllButton.addEventListener("click", () => {
 
   const plan = [];
 
-  // plan = [ {start, end, repeat}, ... ]
+  // plan = [ {start, end, repeat, chunkIndex}, ... ]
   for (let g = 0; g < globalRepeat; g++) {
-    chunks.forEach((chunk) => {
+    chunks.forEach((chunk, chunkIndex) => {
       const r = chunk.repeat || 1;
       plan.push({
         start: chunk.start,
         end: chunk.start + chunk.duration,
-        repeat: r
+        repeat: r,
+        chunkIndex: chunkIndex
       });
     });
   }
@@ -229,18 +257,22 @@ playAllButton.addEventListener("click", () => {
 
   function playNext() {
     if (!isPlayingAll) {
+      clearActiveChunkHighlight();
       playAllButton.disabled = false;
       return;
     }
 
     if (idx >= plan.length) {
       isPlayingAll = false;
+      clearActiveChunkHighlight();
       playAllButton.disabled = false;
       return;
     }
 
     const seg = plan[idx];
     idx += 1;
+
+    setActiveChunkHighlight(seg.chunkIndex);
 
     playSection(seg.start, seg.end, seg.repeat, () => {
       playNext();
@@ -272,6 +304,7 @@ stopButton.addEventListener("click", () => {
     currentTimeUpdateHandler = null;
   }
 
+  clearActiveChunkHighlight();
   playAllButton.disabled = false;
   pauseButton.textContent = "일시정지";
 });

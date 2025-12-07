@@ -197,3 +197,77 @@ playAllButton.addEventListener("click", () => {
 
   let globalRepeat = parseInt(globalRepeatInput.value, 10);
   if (!Number.isFinite(globalRepeat) || globalRepeat < 1) {
+    globalRepeat = 1;
+    globalRepeatInput.value = "1";
+  }
+
+  const rate = getPlaybackRate();
+  audioElement.playbackRate = rate;
+
+  // 재생 계획 만들기
+  const plan = [];
+  for (let g = 0; g < globalRepeat; g++) {
+    chunks.forEach((chunk) => {
+      const r = chunk.repeat || 1;
+      for (let i = 0; i < r; i++) {
+        plan.push({
+          start: chunk.start,
+          end: chunk.start + chunk.duration,
+        });
+      }
+    });
+  }
+
+  if (plan.length === 0) return;
+
+  isPlayingAll = true;
+  playAllButton.disabled = true;
+
+  let idx = 0;
+
+  function playNext() {
+    if (idx >= plan.length) {
+      isPlayingAll = false;
+      playAllButton.disabled = false;
+      return;
+    }
+
+    const seg = plan[idx];
+    idx++;
+
+    audioElement.currentTime = seg.start;
+    audioElement.play();
+
+    const handler = () => {
+      if (audioElement.currentTime >= seg.end || audioElement.ended) {
+        audioElement.pause();
+        audioElement.removeEventListener("timeupdate", handler);
+        playNext();
+      }
+    };
+
+    audioElement.addEventListener("timeupdate", handler);
+  }
+
+  playNext();
+});
+
+// 일시정지 / 다시 재생 (전체/단일 공통)
+pauseButton.addEventListener("click", () => {
+  if (audioElement.paused) {
+    audioElement.play().catch(console.error);
+    pauseButton.textContent = "일시정지";
+  } else {
+    audioElement.pause();
+    pauseButton.textContent = "다시 재생";
+  }
+});
+
+// 정지
+stopButton.addEventListener("click", () => {
+  audioElement.pause();
+  audioElement.currentTime = 0;
+  isPlayingAll = false;
+  playAllButton.disabled = false;
+  pauseButton.textContent = "일시정지";
+});

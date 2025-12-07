@@ -200,3 +200,23 @@ input[type="file"] {
 .form-row {
   overflow-x: hidden;
 }
+
+/* 가로 배치 */
+.form-row {
+  display: flex;
+  align-items: center;
+}
+
+/* label 폭 + 입력창과 간격 확보 */
+.form-row label {
+  width: 120px;       /* 기존 요청한 고정 폭 */
+  flex-shrink: 0;
+  margin-right: 10px; /* ⭐ 입력창과의 간격 (원하는 만큼 조절 가능) */
+}
+
+/* 입력창을 넓게 */
+.form-row input[type="file"],
+.form-row input[type="number"],
+.form-row select {
+  flex: 1;
+}

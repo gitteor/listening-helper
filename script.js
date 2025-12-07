@@ -173,7 +173,7 @@ function renderChunkList() {
 
     const playButton = document.createElement("button");
     playButton.className = "secondary";
-    playButton.textContent = "재생";
+    playButton.textContent = "▶";
     playButton.addEventListener("click", () => {
       handlePlaySingleChunk(idx);
     });

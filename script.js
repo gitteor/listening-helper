@@ -100,7 +100,7 @@ function renderChunkList() {
     // 구간 번호
     const labelSpan = document.createElement("span");
     labelSpan.className = "chunk-label";
-    labelSpan.textContent = `${chunk.index}`;
+    labelSpan.textContent = `구간 ${chunk.index}`;
 
     // 시간 정보
     const timeSpan = document.createElement("span");
@@ -136,7 +136,7 @@ function renderChunkList() {
     // 이 구간 재생 버튼
     const playButton = document.createElement("button");
     playButton.className = "secondary";
-    playButton.textContent = "▶";
+    playButton.textContent = "이 구간 재생";
     playButton.addEventListener("click", () => {
       playSection(chunk.start, chunk.start + chunk.duration, chunk.repeat);
     });

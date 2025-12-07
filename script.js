@@ -140,7 +140,7 @@ function renderChunkList() {
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "chunk-label";
-    labelSpan.textContent = `구간 ${chunk.index}`;
+    labelSpan.textContent = `${chunk.index}`;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "chunk-time";

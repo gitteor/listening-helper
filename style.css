@@ -174,16 +174,29 @@ button.secondary:hover {
   font-weight: bold;
 }
 
-/* 모바일에서 파일 선택 input이 너무 커지지 않도록 */
-input[type="file"] {
+/* form-row 안의 input들을 동일한 폭으로 맞춤 */
+.form-row input {
+  width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
-/* 2) 전체 페이지 가로 스크롤 방지 */
-html, body {
+/* 파일 선택 input을 다른 입력창과 동일한 가로폭으로 맞춤 */
+input[type="file"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
+  /* 숫자 입력창과 비슷한 높이/퍼딩으로 정렬 */
+  padding: 8px;
+  height: 40px;
+
+  /* 텍스트가 벗어나지 않도록 */
+  overflow: hidden;
+}
+
+/* 모바일에서 파일 input이 튀어나가는 것을 방지 */
+.form-row {
   overflow-x: hidden;
 }
-

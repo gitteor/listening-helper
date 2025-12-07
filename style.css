@@ -1,0 +1,165 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f5f7fb;
+  color: #222;
+}
+
+.header {
+  background: #243b80;
+  color: #fff;
+  padding: 1.5rem 1rem;
+  text-align: center;
+}
+
+.header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.6rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 1.5rem auto 3rem;
+  padding: 0 1rem;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.panel h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  margin-bottom: 0.8rem;
+}
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  gap: 0.5rem;
+}
+
+.form-row label {
+  min-width: 160px;
+  font-weight: 600;
+}
+
+.form-row input,
+.form-row select {
+  flex: 1 1 150px;
+  padding: 0.35rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ccd1e4;
+  font-size: 0.95rem;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 4px;
+  border: none;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.95rem;
+}
+
+button.primary {
+  background: #243b80;
+  color: #fff;
+}
+
+button.primary:hover {
+  background: #1c2f66;
+}
+
+button.danger {
+  background: #e53935;
+  color: #fff;
+}
+
+button.danger:hover {
+  background: #c62828;
+}
+
+button.secondary {
+  background: #e0e3f0;
+  color: #222;
+}
+
+button.secondary:hover {
+  background: #cfd3e6;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.chunk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.chunk-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  background: #f8f9ff;
+  border: 1px solid #e0e3f7;
+}
+
+.chunk-row .chunk-label {
+  min-width: 140px;
+  font-weight: 600;
+}
+
+.chunk-row .chunk-time {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.chunk-row .repeat-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+}
+
+.chunk-row .repeat-field input {
+  width: 60px;
+}
+
+.chunk-row button {
+  margin-left: auto;
+}
+
+.empty {
+  font-size: 0.9rem;
+  color: #777;
+}
+
+.footer {
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.8rem;
+  color: #666;
+}

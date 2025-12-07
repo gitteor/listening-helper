@@ -50,7 +50,7 @@ body {
 }
 
 .form-row label {
-  min-width: 120px;
+  min-width: 110px;
   font-weight: 600;
 }
 
@@ -209,7 +209,7 @@ input[type="file"] {
   }
 
   .form-row label {
-    width: 120px;       /* 모바일에서만 label 폭 고정 */
+    width: 110px;       /* 모바일에서만 label 폭 고정 */
     flex-shrink: 0;
     margin-right: 10px; /* 간격 */
   }

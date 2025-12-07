@@ -163,3 +163,14 @@ button.secondary:hover {
   font-size: 0.8rem;
   color: #666;
 }
+
+/* 현재 재생 중인 구간 강조 */
+.chunk-row.active {
+  background-color: #e6f0ff; /* 연한 파란 배경 (원하시면 색 변경 가능) */
+}
+
+/* (선택) 현재 재생 중 버튼 스타일 예시 */
+.chunk-row.active button.secondary {
+  font-weight: bold;
+}
+

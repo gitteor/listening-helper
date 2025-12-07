@@ -16,6 +16,7 @@
     <!-- 상단 컨트롤 영역 -->
     <section class="panel">
       <h2>1. 파일 업로드 & 자르기 설정</h2>
+
       <div class="form-row">
         <label for="audioFile">음성 파일 업로드</label>
         <input type="file" id="audioFile" accept="audio/*" />
@@ -26,6 +27,11 @@
         <input type="number" id="chunkSeconds" value="10" min="1" />
       </div>
 
+      <div class="form-row">
+        <label for="defaultRepeat">기본 반복 횟수</label>
+        <input type="number" id="defaultRepeat" value="1" min="1" />
+      </div>
+
       <button id="cutButton" class="primary">자르기</button>
       <p class="hint">※ 파일은 서버에 업로드되지 않고, 브라우저 안에서만 처리됩니다.</p>
     </section>
@@ -33,16 +39,6 @@
     <!-- 잘린 구간 리스트 -->
     <section class="panel">
       <h2>2. 잘린 구간 목록</h2>
-
-      <!-- 전체 반복 조절 영역 -->
-      <div class="form-row">
-        <label>전체 구간 반복 조절</label>
-        <div class="button-row">
-          <button id="repeatAllMinus" class="secondary">전체 -1</button>
-          <button id="repeatAllPlus" class="secondary">전체 +1</button>
-          <button id="repeatAllReset" class="secondary">전체 1로 초기화</button>
-        </div>
-      </div>
 
       <div id="chunkList" class="chunk-list">
         <p class="empty">아직 잘린 구간이 없습니다. 파일을 선택하고 자르기를 눌러주세요.</p>

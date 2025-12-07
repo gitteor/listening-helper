@@ -174,3 +174,16 @@ button.secondary:hover {
   font-weight: bold;
 }
 
+/* 모바일에서 파일 선택 input이 너무 커지지 않도록 */
+input[type="file"] {
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* 2) 전체 페이지 가로 스크롤 방지 */
+html, body {
+  overflow-x: hidden;
+}
+

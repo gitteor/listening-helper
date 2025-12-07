@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>리스닝 연습용 오디오 분할 플레이어</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>리스닝 연습용 오디오 분할 플레이어</h1>
+    <p>음성 파일을 업로드하고, 원하는 초 단위로 잘라 반복해서 들어보세요.</p>
+  </header>
+
+  <main class="container">
+    <!-- 상단 컨트롤 영역 -->
+    <section class="panel">
+      <h2>1. 파일 업로드 & 자르기 설정</h2>
+      <div class="form-row">
+        <label for="audioFile">음성 파일 업로드</label>
+        <input type="file" id="audioFile" accept="audio/*" />
+      </div>
+
+      <div class="form-row">
+        <label for="chunkSeconds">자를 길이 (초)</label>
+        <input type="number" id="chunkSeconds" value="10" min="1" />
+      </div>
+
+      <button id="cutButton" class="primary">자르기</button>
+      <p class="hint">※ 파일은 서버에 업로드되지 않고, 브라우저 안에서만 처리됩니다.</p>
+    </section>
+
+    <!-- 잘린 구간 리스트 -->
+    <section class="panel">
+      <h2>2. 잘린 구간 목록</h2>
+      <div id="chunkList" class="chunk-list">
+        <p class="empty">아직 잘린 구간이 없습니다. 파일을 선택하고 자르기를 눌러주세요.</p>
+      </div>
+    </section>
+
+    <!-- 전체 재생 컨트롤 -->
+    <section class="panel">
+      <h2>3. 전체 재생 설정</h2>
+
+      <div class="form-row">
+        <label for="globalRepeat">전체 반복 횟수 (전체 세트를 몇 번 돌릴지)</label>
+        <input type="number" id="globalRepeat" value="1" min="1" />
+      </div>
+
+      <div class="form-row">
+        <label for="playbackRate">재생 속도</label>
+        <select id="playbackRate">
+          <option value="0.5">0.5x (느리게)</option>
+          <option value="0.75">0.75x</option>
+          <option value="1" selected>1.0x (기본)</option>
+          <option value="1.25">1.25x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2">2.0x (빠르게)</option>
+        </select>
+      </div>
+
+      <div class="button-row">
+        <button id="playAllButton" class="primary">전체 재생</button>
+        <button id="stopButton" class="danger">정지</button>
+      </div>
+
+      <p class="hint">
+        전체 재생 시: 각 구간마다 지정한 반복횟수를 적용해서 1세트로 보고,<br />
+        그 세트를 전체 반복 횟수만큼 순서대로 재생합니다.
+      </p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>브라우저에서만 동작하는 리스닝 연습 도구 (GitHub Pages 호환)</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

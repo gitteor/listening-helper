@@ -206,6 +206,18 @@ input[type="file"] {
   color: #fff;     /* 헤더 안의 글씨도 흰색으로 설정 (가독성 향상) */
 }
 
+button.primary {
+  background-color: #000;
+  color: #fff;               /* 글씨 흰색 */
+  border: 1px solid #000;    /* 깔끔하게 검정색 테두리 */
+}
+
+button.primary:hover {
+  background-color: #222;
+  border-color: #222;
+}
+
+
 /* ---- 모바일에서만 파일 input 확장 & 가로정렬 적용 ---- */
 @media (max-width: 600px) {
   .form-row {

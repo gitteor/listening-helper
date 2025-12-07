@@ -3,26 +3,25 @@ let chunks = [];              // { index, start, duration, repeat }
 let playMode = "none";        // "none" | "single" | "all"
 let playPlan = [];            // [{ start, end }]
 let playIndex = 0;            // 현재 재생 중인 playPlan 인덱스
-let lastObjectUrl = null;
-
 let isPaused = false;
-let currentSegEnd = 0;        // 현재 구간 끝 시각(초)
-let segmentTimerId = null;    // setTimeout ID
+let lastObjectUrl = null;
+let segmentTimerId = null;
+let currentSegEnd = 0;        // 현재 구간의 끝 시각(원본 오디오 기준 초)
 
-// ===== DOM 요소 =====
-const fileInput = document.getElementById("audioFile");
+// ===== DOM 요소 참조 (HTML에 있는 id 그대로 사용) =====
+const fileInput         = document.getElementById("audioFile");
 const chunkSecondsInput = document.getElementById("chunkSeconds");
-const defaultRepeatInput = document.getElementById("defaultRepeat");
-const cutButton = document.getElementById("cutButton");
-const chunkListEl = document.getElementById("chunkList");
+const defaultRepeatInput= document.getElementById("defaultRepeat");
+const cutButton         = document.getElementById("cutButton");
+const chunkListEl       = document.getElementById("chunkList");
 
 const globalRepeatInput = document.getElementById("globalRepeat");
-const playbackRateSelect = document.getElementById("playbackRate");
-const playAllButton = document.getElementById("playAllButton");
-const pauseButton = document.getElementById("pauseButton");
-const stopButton = document.getElementById("stopButton");
+const playbackRateSelect= document.getElementById("playbackRate");
+const playAllButton     = document.getElementById("playAllButton");
+const pauseButton       = document.getElementById("pauseButton");
+const stopButton        = document.getElementById("stopButton");
 
-const audioElement = document.getElementById("audioPlayer");
+const audioElement      = document.getElementById("audioPlayer");
 
 // ===== 유틸 =====
 function formatTime(sec) {
@@ -52,15 +51,15 @@ function stopAllPlayback() {
 
   if (audioElement) {
     audioElement.pause();
-    // audioElement.currentTime = 0; // 필요하면 항상 처음으로
+    // audioElement.currentTime = 0; // 원하면 항상 처음으로
   }
 
   playAllButton.disabled = false;
   pauseButton.textContent = "일시정지";
 }
 
-// ===== 파일 자르기 =====
-async function handleCut() {
+// ===== 1. 파일 자르기 =====
+function handleCut() {
   const file = fileInput.files[0];
   if (!file) {
     alert("먼저 음성 파일을 선택해주세요.");
@@ -105,7 +104,7 @@ async function handleCut() {
         index,
         start,
         duration: length,
-        repeat: defaultRepeat, // 기본 반복
+        repeat: defaultRepeat,  // 기본 반복 횟수 적용
       });
       index++;
     }
@@ -115,14 +114,14 @@ async function handleCut() {
   };
 }
 
-// ===== 잘린 구간 목록 표시 =====
+// ===== 2. 잘린 구간 목록 표시 =====
 function renderChunkList() {
   chunkListEl.innerHTML = "";
 
   if (chunks.length === 0) {
     const p = document.createElement("p");
     p.className = "empty";
-    p.textContent = "잘린 구간이 없습니다.";
+    p.textContent = "파일을 선택하고 자르기를 눌러주세요.";
     chunkListEl.appendChild(p);
     return;
   }
@@ -181,8 +180,7 @@ function renderChunkList() {
   });
 }
 
-// ===== 공통 재생 로직 (setTimeout 기반) =====
-
+// ===== 3. 공통 재생 로직 (setTimeout 기반) =====
 function startPlayback(plan, mode) {
   if (!audioElement || plan.length === 0) return;
 
@@ -193,4 +191,18 @@ function startPlayback(plan, mode) {
   playMode = mode;
   isPaused = false;
 
-  audioEle
+  audioElement.playbackRate = getPlaybackRate();
+  pauseButton.textContent = "일시정지";
+
+  if (mode === "all") {
+    playAllButton.disabled = true;
+  } else {
+    playAllButton.disabled = false;
+  }
+
+  playCurrentSegment();
+}
+
+function playCurrentSegment() {
+  if (playMode === "none" || playIndex >= playPlan.length) {
+    stopAllPlayback();

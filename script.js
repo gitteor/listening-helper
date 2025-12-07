@@ -1,11 +1,12 @@
 // ===== 전역 상태 =====
 let chunks = [];              // { index, start, duration, repeat }
 let playMode = "none";        // "none" | "single" | "all"
-let sequence = [];            // 재생할 구간 배열 {start, end}
-let seqIndex = 0;             // 현재 재생 중인 sequence 인덱스
+let playPlan = [];            // [{ start, end }]
+let playIndex = 0;            // 현재 재생 중인 playPlan 인덱스
 let isPaused = false;
 let lastObjectUrl = null;
 let currentTimeUpdateHandler = null;
+let currentSegEnd = 0;        // 현재 구간의 끝나는 시각(초)
 
 // ===== DOM 요소 =====
 const fileInput = document.getElementById("audioFile");
@@ -48,16 +49,15 @@ function getPlaybackRate() {
   return Number.isFinite(rate) && rate > 0 ? rate : 1;
 }
 
-// 재생 완전 정지 (상태 초기화)
 function stopAllPlayback() {
   playMode = "none";
-  sequence = [];
-  seqIndex = 0;
+  playPlan = [];
+  playIndex = 0;
   isPaused = false;
 
   if (audioElement) {
     audioElement.pause();
-    // audioElement.currentTime = 0; // 필요하면 항상 처음으로
+    // audioElement.currentTime = 0; // 필요하면 항상 처음으로 되돌리려면 주석 해제
   }
   clearTimeUpdateHandler();
 
@@ -140,7 +140,7 @@ function renderChunkList() {
 
     const labelSpan = document.createElement("span");
     labelSpan.className = "chunk-label";
-    labelSpan.textContent = `${chunk.index}`;
+    labelSpan.textContent = `구간 ${chunk.index}`;
 
     const timeSpan = document.createElement("span");
     timeSpan.className = "chunk-time";
@@ -173,7 +173,7 @@ function renderChunkList() {
 
     const playButton = document.createElement("button");
     playButton.className = "secondary";
-    playButton.textContent = "▶";
+    playButton.textContent = "이 구간 재생";
     playButton.addEventListener("click", () => {
       handlePlaySingleChunk(idx);
     });
@@ -187,15 +187,16 @@ function renderChunkList() {
   });
 }
 
-// ===== 공통 재생 엔진 =====
-// seq: [{start, end}], mode: "single" | "all"
-function startPlayback(seq, mode) {
-  if (!audioElement || seq.length === 0) return;
+// ===== 공통 재생 로직 =====
 
-  stopAllPlayback(); // 기존 재생 완전 정리
+// 플레이 계획(plan)을 만들어서 시작하는 함수
+function startPlayback(plan, mode) {
+  if (!audioElement || plan.length === 0) return;
 
-  sequence = seq;
-  seqIndex = 0;
+  stopAllPlayback(); // 기존 재생 완전 초기화
+
+  playPlan = plan;
+  playIndex = 0;
   playMode = mode;
   isPaused = false;
 
@@ -211,26 +212,30 @@ function startPlayback(seq, mode) {
   playCurrentSegment();
 }
 
+// 실제로 plan[playIndex]를 재생하는 함수
 function playCurrentSegment() {
-  if (playMode === "none" || seqIndex >= sequence.length) {
+  if (playMode === "none" || playIndex >= playPlan.length) {
     stopAllPlayback();
     return;
   }
 
-  const seg = sequence[seqIndex];
+  const seg = playPlan[playIndex];
+  currentSegEnd = seg.end;
+
   audioElement.currentTime = seg.start;
 
   audioElement
     .play()
     .then(() => {
       setTimeUpdateHandler(() => {
-        // 일시정지 상태에서는 넘어가지 않도록 방어
-        if (audioElement.paused || playMode === "none") return;
+        if (playMode === "none") return;
+        if (isPaused) return;
 
-        if (audioElement.currentTime >= seg.end) {
+        // 끝나는 시점 약간 여유(0.01초) 두고 체크
+        if (audioElement.currentTime >= currentSegEnd - 0.01) {
           audioElement.pause();
-          seqIndex++;
-          if (seqIndex < sequence.length && playMode !== "none") {
+          playIndex++;
+          if (playIndex < playPlan.length && playMode !== "none") {
             setTimeout(playCurrentSegment, 50);
           } else {
             stopAllPlayback();
@@ -254,16 +259,16 @@ function handlePlaySingleChunk(idx) {
 
   const chunk = chunks[idx];
   const times = chunk.repeat || 1;
-  const seq = [];
 
+  const plan = [];
   for (let i = 0; i < times; i++) {
-    seq.push({
+    plan.push({
       start: chunk.start,
       end: chunk.start + chunk.duration,
     });
   }
 
-  startPlayback(seq, "single");
+  startPlayback(plan, "single");
 }
 
 // ===== 전체 재생 =====
@@ -277,13 +282,13 @@ function handlePlayAll() {
   const totalSetRepeat =
     Number.isFinite(globalRepeat) && globalRepeat > 0 ? globalRepeat : 1;
 
-  const seq = [];
+  const plan = [];
 
   for (let g = 0; g < totalSetRepeat; g++) {
     chunks.forEach((chunk) => {
       const r = chunk.repeat || 1;
       for (let i = 0; i < r; i++) {
-        seq.push({
+        plan.push({
           start: chunk.start,
           end: chunk.start + chunk.duration,
         });
@@ -291,7 +296,7 @@ function handlePlayAll() {
     });
   }
 
-  startPlayback(seq, "all");
+  startPlayback(plan, "all");
 }
 
 // ===== 이벤트 바인딩 =====
@@ -306,8 +311,14 @@ stopButton.addEventListener("click", () => {
 pauseButton.addEventListener("click", () => {
   if (!audioElement || playMode === "none") return;
 
-  if (audioElement.paused) {
+  if (!isPaused) {
+    // 일시정지
+    isPaused = true;
+    audioElement.pause();
+    pauseButton.textContent = "다시 재생";
+  } else {
     // 다시 재생
+    isPaused = false;
     audioElement
       .play()
       .then(() => {
@@ -316,9 +327,5 @@ pauseButton.addEventListener("click", () => {
       .catch((e) => {
         console.error(e);
       });
-  } else {
-    // 일시정지
-    audioElement.pause();
-    pauseButton.textContent = "다시 재생";
   }
 });
